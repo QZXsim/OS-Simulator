@@ -11,15 +11,20 @@ public abstract class SimulationPanel extends JPanel {
     protected JTextField pidField, arrivalField, burstField;
     protected JTextArea outputArea;
     protected JButton addButton, runButton;
-    protected List<Process> processList;
+    protected JComboBox<String> algorithmComboBox;
+    protected List<Process> processList;           // User-added processes
+    protected List<Process> scheduledProcessList;  // Final scheduled result after Run
+    protected List<GanttEntity> ganttEntities = new ArrayList<>();
     protected JPanel ganttChartPanel;
 
     public SimulationPanel() {
         processList = new ArrayList<>();
+        scheduledProcessList = new ArrayList<>();
         setLayout(new BorderLayout());
 
         // Top Input Panel
-        JPanel inputPanel = new JPanel(new GridLayout(4, 2, 5, 5));
+        JPanel inputPanel = new JPanel(new GridLayout(5, 2, 5, 5));
+
         inputPanel.add(new JLabel("PID:"));
         pidField = new JTextField();
         inputPanel.add(pidField);
@@ -31,6 +36,10 @@ public abstract class SimulationPanel extends JPanel {
         inputPanel.add(new JLabel("Burst Time:"));
         burstField = new JTextField();
         inputPanel.add(burstField);
+
+        algorithmComboBox = new JComboBox<>(new String[]{"FCFS", "SJF", "SRTF", "Priority", "RR"});
+        inputPanel.add(new JLabel("Algorithm:"));
+        inputPanel.add(algorithmComboBox);
 
         addButton = new JButton("Add Process");
         inputPanel.add(addButton);
@@ -51,7 +60,7 @@ public abstract class SimulationPanel extends JPanel {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                drawGanttChart(g, processList);
+                drawGanttChart(g, ganttEntities);
             }
         };
         ganttChartPanel.setPreferredSize(new Dimension(400, 100));
@@ -63,35 +72,30 @@ public abstract class SimulationPanel extends JPanel {
 
     protected abstract void configureButtons();
 
-    protected void drawGanttChart(Graphics g, List<Process> processList) {
-        if (processList == null || processList.isEmpty()) return;
+    protected void drawGanttChart(Graphics g, List<GanttEntity> entities) {
+        if (entities == null || entities.isEmpty()) return;
 
-        List<Process> sortedList = getSortedByArrival(processList);
         int x = 10, y = 20, scale = 30;
-        int currentTime = 0;
 
-        for (Process p : sortedList) {
-            int startTime = Math.max(currentTime, p.getArrivalTime());
-            int width = p.getBurstTime() * scale;
+        for (GanttEntity e : entities) {
+            int width = (e.getEndTime() - e.getStartTime()) * scale;
 
             g.setColor(Color.CYAN);
             g.fillRect(x, y, width, 30);
             g.setColor(Color.BLACK);
             g.drawRect(x, y, width, 30);
-            g.drawString("P" + p.getPid(), x + width / 2 - 10, y + 20);
-            g.drawString("" + startTime, x, y + 45);
+            g.drawString("P" + e.getPid(), x + width / 2 - 10, y + 20);
+            g.drawString("" + e.getStartTime(), x, y + 45);
 
             x += width;
-            currentTime = startTime + p.getBurstTime();
         }
-        g.drawString("" + currentTime, x, y + 45);
+
+        if (!entities.isEmpty()) {
+            GanttEntity last = entities.get(entities.size() - 1);
+            g.drawString("" + last.getEndTime(), x, y + 45);
+        }
     }
 
-    protected List<Process> getSortedByArrival(List<Process> list) {
-        List<Process> sorted = new ArrayList<>(list);
-        sorted.sort((p1, p2) -> Integer.compare(p1.getArrivalTime(), p2.getArrivalTime()));
-        return sorted;
-    }
 
     protected void clearFields() {
         pidField.setText("");
